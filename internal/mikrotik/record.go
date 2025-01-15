@@ -12,6 +12,8 @@ import (
 	"sigs.k8s.io/external-dns/endpoint"
 )
 
+const defaultTTL = 300
+
 // DNSRecord represents a MikroTik DNS record in the format used by the API
 // https://help.mikrotik.com/docs/display/ROS/DNS#DNS-DNSStatic
 type DNSRecord struct {
@@ -392,29 +394,33 @@ func endpointTTLtoMikrotikTTL(ttl endpoint.TTL) (string, error) {
 		return "", fmt.Errorf("negative TTL values are not allowed: %v", ttl)
 	}
 
-	totalSeconds := int64(ttl)
-	days := totalSeconds / 86400
-	remainder := totalSeconds % 86400
-
-	hours := remainder / 3600
-	remainder %= 3600
-
-	minutes := remainder / 60
-	seconds := remainder % 60
-
 	var parts []string
 
-	if days > 0 {
-		parts = append(parts, fmt.Sprintf("%dd", days))
-	}
-	if hours > 0 {
-		parts = append(parts, fmt.Sprintf("%dh", hours))
-	}
-	if minutes > 0 {
-		parts = append(parts, fmt.Sprintf("%dm", minutes))
-	}
-	if seconds > 0 || len(parts) == 0 {
-		parts = append(parts, fmt.Sprintf("%ds", seconds))
+	if ttl.IsConfigured() {
+		parts = append(parts, fmt.Sprintf("%ds", defaultTTL))
+	} else {
+		totalSeconds := int64(ttl)
+		days := totalSeconds / 86400
+		remainder := totalSeconds % 86400
+
+		hours := remainder / 3600
+		remainder %= 3600
+
+		minutes := remainder / 60
+		seconds := remainder % 60
+
+		if days > 0 {
+			parts = append(parts, fmt.Sprintf("%dd", days))
+		}
+		if hours > 0 {
+			parts = append(parts, fmt.Sprintf("%dh", hours))
+		}
+		if minutes > 0 {
+			parts = append(parts, fmt.Sprintf("%dm", minutes))
+		}
+		if seconds > 0 {
+			parts = append(parts, fmt.Sprintf("%ds", seconds))
+		}
 	}
 
 	durationStr := strings.Join(parts, "")
