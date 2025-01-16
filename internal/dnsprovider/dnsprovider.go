@@ -16,6 +16,7 @@ import (
 
 func Init(config configuration.Config) (provider.Provider, error) {
 	var domainFilter endpoint.DomainFilter
+
 	createMsg := "creating mikrotik provider with "
 
 	if config.RegexDomainFilter != "" {
@@ -48,5 +49,5 @@ func Init(config configuration.Config) (provider.Provider, error) {
 		return nil, fmt.Errorf("reading mikrotik configuration failed: %v", err)
 	}
 
-	return mikrotik.NewMikrotikProvider(domainFilter, &mikrotikConfig)
+	return mikrotik.NewMikrotikProvider(config.DefaultTTl, domainFilter, &mikrotikConfig)
 }

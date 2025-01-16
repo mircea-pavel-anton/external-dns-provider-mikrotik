@@ -3,7 +3,6 @@ package mikrotik
 import (
 	"context"
 	"fmt"
-
 	log "github.com/sirupsen/logrus"
 	"sigs.k8s.io/external-dns/endpoint"
 	"sigs.k8s.io/external-dns/plan"
@@ -16,10 +15,11 @@ type MikrotikProvider struct {
 
 	client       *MikrotikApiClient
 	domainFilter endpoint.DomainFilter
+	defaultTTL   endpoint.TTL
 }
 
 // NewMikrotikProvider initializes a new DNSProvider, of the Mikrotik variety
-func NewMikrotikProvider(domainFilter endpoint.DomainFilter, config *MikrotikConnectionConfig) (provider.Provider, error) {
+func NewMikrotikProvider(defaultTTL endpoint.TTL, domainFilter endpoint.DomainFilter, config *MikrotikConnectionConfig) (provider.Provider, error) {
 	// Create the Mikrotik API Client
 	client, err := NewMikrotikClient(config)
 	if err != nil {
@@ -38,6 +38,7 @@ func NewMikrotikProvider(domainFilter endpoint.DomainFilter, config *MikrotikCon
 	p := &MikrotikProvider{
 		client:       client,
 		domainFilter: domainFilter,
+		defaultTTL:   defaultTTL,
 	}
 
 	return p, nil
@@ -70,7 +71,7 @@ func (p *MikrotikProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, e
 
 // ApplyChanges applies a given set of changes in the DNS provider.
 func (p *MikrotikProvider) ApplyChanges(ctx context.Context, changes *plan.Changes) error {
-	changes = cleanupChanges(changes)
+	changes = p.changes(changes)
 
 	for _, endpoint := range append(changes.UpdateOld, changes.Delete...) {
 		if err := p.client.DeleteDNSRecord(endpoint); err != nil {
@@ -158,7 +159,7 @@ func contains(haystack []*endpoint.Endpoint, needle *endpoint.Endpoint) bool {
 	return false
 }
 
-func cleanupChanges(changes *plan.Changes) *plan.Changes {
+func (p *MikrotikProvider) changes(changes *plan.Changes) *plan.Changes {
 	// Initialize new plan -> we don't really need to worry about Create or Delete changes.
 	// Only updates are sketchy
 	newChanges := &plan.Changes{
@@ -169,6 +170,12 @@ func cleanupChanges(changes *plan.Changes) *plan.Changes {
 	}
 
 	duplicates := []*endpoint.Endpoint{}
+
+	for _, create := range changes.Create {
+		if !create.RecordTTL.IsConfigured() {
+			create.RecordTTL = p.defaultTTL
+		}
+	}
 
 	for _, old := range changes.UpdateOld {
 		for _, new := range changes.UpdateNew {
