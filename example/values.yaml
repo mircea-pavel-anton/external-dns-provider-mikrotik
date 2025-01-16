@@ -24,6 +24,8 @@ provider:
         value: json
       - name: LOG_LEVEL
         value: debug
+      - name: MIKROTIK_DEFAULT_TTL
+        value: 1800
       - name: MIKROTIK_BASEURL
         valueFrom:
           secretKeyRef:
