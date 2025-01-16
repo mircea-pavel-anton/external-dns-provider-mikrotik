@@ -17,6 +17,10 @@ import (
 	"sigs.k8s.io/external-dns/endpoint"
 )
 
+type MikrotikDefaults struct {
+	TTL int64 `env:"MIKROTIK_DEFAULT_TTL" envDefault:"3600"`
+}
+
 // MikrotikConnectionConfig holds the connection details for the API client
 type MikrotikConnectionConfig struct {
 	BaseUrl       string `env:"MIKROTIK_BASEURL,notEmpty"`
@@ -27,6 +31,7 @@ type MikrotikConnectionConfig struct {
 
 // MikrotikApiClient encapsulates the client configuration and HTTP client
 type MikrotikApiClient struct {
+	*MikrotikDefaults
 	*MikrotikConnectionConfig
 	*http.Client
 }
@@ -55,7 +60,7 @@ type MikrotikSystemInfo struct {
 }
 
 // NewMikrotikClient creates a new instance of MikrotikApiClient
-func NewMikrotikClient(config *MikrotikConnectionConfig) (*MikrotikApiClient, error) {
+func NewMikrotikClient(config *MikrotikConnectionConfig, defaults *MikrotikDefaults) (*MikrotikApiClient, error) {
 	log.Infof("creating a new Mikrotik API Client")
 
 	jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
@@ -65,6 +70,7 @@ func NewMikrotikClient(config *MikrotikConnectionConfig) (*MikrotikApiClient, er
 	}
 
 	client := &MikrotikApiClient{
+		MikrotikDefaults:         defaults,
 		MikrotikConnectionConfig: config,
 		Client: &http.Client{
 			Transport: &http.Transport{

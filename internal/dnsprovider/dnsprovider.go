@@ -49,5 +49,10 @@ func Init(config configuration.Config) (provider.Provider, error) {
 		return nil, fmt.Errorf("reading mikrotik configuration failed: %v", err)
 	}
 
-	return mikrotik.NewMikrotikProvider(config.DefaultTTl, domainFilter, &mikrotikConfig)
+	mikrotikDefaults := mikrotik.MikrotikDefaults{}
+	if err := env.Parse(&mikrotikDefaults); err != nil {
+		return nil, fmt.Errorf("reading mikrotik defaults failed: %v", err)
+	}
+
+	return mikrotik.NewMikrotikProvider(domainFilter, &mikrotikDefaults, &mikrotikConfig)
 }

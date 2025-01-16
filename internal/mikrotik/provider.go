@@ -15,13 +15,12 @@ type MikrotikProvider struct {
 
 	client       *MikrotikApiClient
 	domainFilter endpoint.DomainFilter
-	defaultTTL   endpoint.TTL
 }
 
 // NewMikrotikProvider initializes a new DNSProvider, of the Mikrotik variety
-func NewMikrotikProvider(defaultTTL endpoint.TTL, domainFilter endpoint.DomainFilter, config *MikrotikConnectionConfig) (provider.Provider, error) {
+func NewMikrotikProvider(domainFilter endpoint.DomainFilter, defaults *MikrotikDefaults, config *MikrotikConnectionConfig) (provider.Provider, error) {
 	// Create the Mikrotik API Client
-	client, err := NewMikrotikClient(config)
+	client, err := NewMikrotikClient(config, defaults)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create the MikroTik client: %w", err)
 	}
@@ -38,7 +37,6 @@ func NewMikrotikProvider(defaultTTL endpoint.TTL, domainFilter endpoint.DomainFi
 	p := &MikrotikProvider{
 		client:       client,
 		domainFilter: domainFilter,
-		defaultTTL:   defaultTTL,
 	}
 
 	return p, nil
@@ -173,7 +171,8 @@ func (p *MikrotikProvider) changes(changes *plan.Changes) *plan.Changes {
 
 	for _, create := range changes.Create {
 		if !create.RecordTTL.IsConfigured() {
-			create.RecordTTL = p.defaultTTL
+			create.RecordTTL = endpoint.TTL(p.client.TTL)
+			newChanges.Create = append(newChanges.Create, create)
 		}
 	}
 

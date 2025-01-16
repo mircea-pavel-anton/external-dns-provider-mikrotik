@@ -1,7 +1,6 @@
 package configuration
 
 import (
-	"sigs.k8s.io/external-dns/endpoint"
 	"time"
 
 	"github.com/caarlos0/env/v11"
@@ -17,7 +16,6 @@ type Config struct {
 	ExcludeDomains       []string      `env:"EXCLUDE_DOMAIN_FILTER" envDefault:""`
 	RegexDomainFilter    string        `env:"REGEXP_DOMAIN_FILTER" envDefault:""`
 	RegexDomainExclusion string        `env:"REGEXP_DOMAIN_FILTER_EXCLUSION" envDefault:""`
-	DefaultTTl           endpoint.TTL  `env:"DEFAULT_TTL" envDefault:"300"`
 }
 
 func Init() Config {
