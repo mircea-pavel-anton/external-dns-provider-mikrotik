@@ -528,6 +528,25 @@ func TestChanges(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:     "Create record with zero value in TTL",
+			provider: mikrotikProvider,
+			inputChanges: &plan.Changes{
+				Create: []*endpoint.Endpoint{
+					{
+						DNSName:   "example.org",
+						Targets:   endpoint.NewTargets("2.2.2.2"),
+						RecordTTL: endpoint.TTL(0),
+						ProviderSpecific: endpoint.ProviderSpecific{
+							{Name: "comment", Value: "another comment"},
+							{Name: "address-list", Value: "secondary"},
+							{Name: "match-subdomain", Value: "*.example.com"},
+						},
+					},
+				},
+			},
+			expectedChanges: &plan.Changes{},
+		},
 	}
 
 	for _, tt := range tests {
@@ -550,6 +569,11 @@ func TestChanges(t *testing.T) {
 			for i := range tt.expectedChanges.UpdateNew {
 				if !isEndpointMatching(outputChanges.UpdateNew[i], tt.expectedChanges.UpdateNew[i]) {
 					t.Errorf("Expected endpoint: %v , got %v", tt.expectedChanges.UpdateNew[i], outputChanges.UpdateNew[i])
+				}
+			}
+			for i := range outputChanges.Create {
+				if outputChanges.Create[i].RecordTTL != 0 {
+					t.Errorf("Expected Create endpoint TTL %d, got %d", 0, outputChanges.Create[i].RecordTTL)
 				}
 			}
 		})
