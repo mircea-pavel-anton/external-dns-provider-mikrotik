@@ -162,7 +162,7 @@ func (p *MikrotikProvider) changes(changes *plan.Changes) *plan.Changes {
 	// Initialize new plan -> we don't really need to worry about Create or Delete changes.
 	// Only updates are sketchy
 	newChanges := &plan.Changes{
-		Create:    changes.Create,
+		Create:    []*endpoint.Endpoint{},
 		Delete:    changes.Delete,
 		UpdateOld: []*endpoint.Endpoint{},
 		UpdateNew: []*endpoint.Endpoint{},
@@ -192,6 +192,9 @@ func (p *MikrotikProvider) changes(changes *plan.Changes) *plan.Changes {
 	}
 	for _, new := range changes.UpdateNew {
 		if !contains(duplicates, new) {
+			if !new.RecordTTL.IsConfigured() {
+				new.RecordTTL = endpoint.TTL(p.client.TTL)
+			}
 			newChanges.UpdateNew = append(newChanges.UpdateNew, new)
 		}
 	}

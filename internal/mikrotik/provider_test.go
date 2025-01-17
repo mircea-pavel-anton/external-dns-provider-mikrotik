@@ -325,9 +325,12 @@ func TestContains(t *testing.T) {
 }
 
 func TestChanges(t *testing.T) {
+	defaultTTL := 1800
 	mikrotikProvider := &MikrotikProvider{
 		client: &MikrotikApiClient{
-			&MikrotikDefaults{},
+			&MikrotikDefaults{
+				TTL: int64(defaultTTL),
+			},
 			nil,
 			nil,
 		},
@@ -545,7 +548,20 @@ func TestChanges(t *testing.T) {
 					},
 				},
 			},
-			expectedChanges: &plan.Changes{},
+			expectedChanges: &plan.Changes{
+				Create: []*endpoint.Endpoint{
+					{
+						DNSName:   "example.org",
+						Targets:   endpoint.NewTargets("2.2.2.2"),
+						RecordTTL: endpoint.TTL(mikrotikProvider.client.TTL),
+						ProviderSpecific: endpoint.ProviderSpecific{
+							{Name: "comment", Value: "another comment"},
+							{Name: "address-list", Value: "secondary"},
+							{Name: "match-subdomain", Value: "*.example.com"},
+						},
+					},
+				},
+			},
 		},
 	}
 
@@ -558,6 +574,9 @@ func TestChanges(t *testing.T) {
 			}
 			if len(outputChanges.UpdateNew) != len(tt.expectedChanges.UpdateNew) {
 				t.Errorf("Expected UpdateNew length %d, got %d", len(tt.expectedChanges.UpdateNew), len(outputChanges.UpdateNew))
+			}
+			if len(outputChanges.Create) != len(tt.expectedChanges.Create) {
+				t.Errorf("Expected Create length %d, got %d", len(tt.expectedChanges.Create), len(outputChanges.Create))
 			}
 
 			for i := range tt.expectedChanges.UpdateOld {
@@ -572,7 +591,7 @@ func TestChanges(t *testing.T) {
 				}
 			}
 			for i := range outputChanges.Create {
-				if outputChanges.Create[i].RecordTTL != 0 {
+				if !isEndpointMatching(outputChanges.Create[i], tt.expectedChanges.Create[i]) {
 					t.Errorf("Expected Create endpoint TTL %d, got %d", 0, outputChanges.Create[i].RecordTTL)
 				}
 			}
