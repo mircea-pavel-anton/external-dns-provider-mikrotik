@@ -24,7 +24,9 @@ func TestNewMikrotikClient(t *testing.T) {
 		SkipTLSVerify: true,
 	}
 
-	client, err := NewMikrotikClient(config)
+	defaults := &MikrotikDefaults{}
+
+	client, err := NewMikrotikClient(config, defaults)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -103,6 +105,7 @@ func TestGetSystemInfo(t *testing.T) {
 	testCases := []struct {
 		name          string
 		config        MikrotikConnectionConfig
+		defaults      MikrotikDefaults
 		expectedError bool
 	}{
 		{
@@ -113,6 +116,7 @@ func TestGetSystemInfo(t *testing.T) {
 				Password:      mockPassword,
 				SkipTLSVerify: true,
 			},
+			defaults:      MikrotikDefaults{},
 			expectedError: false,
 		},
 		{
@@ -123,6 +127,7 @@ func TestGetSystemInfo(t *testing.T) {
 				Password:      "wrongpass",
 				SkipTLSVerify: true,
 			},
+			defaults:      MikrotikDefaults{},
 			expectedError: true,
 		},
 		{
@@ -133,6 +138,7 @@ func TestGetSystemInfo(t *testing.T) {
 				Password:      mockPassword,
 				SkipTLSVerify: true,
 			},
+			defaults:      MikrotikDefaults{},
 			expectedError: true,
 		},
 		{
@@ -143,6 +149,7 @@ func TestGetSystemInfo(t *testing.T) {
 				Password:      "wrongpass",
 				SkipTLSVerify: true,
 			},
+			defaults:      MikrotikDefaults{},
 			expectedError: true,
 		},
 		{
@@ -153,6 +160,7 @@ func TestGetSystemInfo(t *testing.T) {
 				Password:      "",
 				SkipTLSVerify: true,
 			},
+			defaults:      MikrotikDefaults{},
 			expectedError: true,
 		},
 	}
@@ -161,8 +169,9 @@ func TestGetSystemInfo(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			config := &tc.config
+			defaults := &tc.defaults
 
-			client, err := NewMikrotikClient(config)
+			client, err := NewMikrotikClient(config, defaults)
 			if err != nil {
 				t.Fatalf("Failed to create client: %v", err)
 			}
@@ -396,8 +405,8 @@ func TestCreateDNSRecord(t *testing.T) {
 				Password:      mockPassword,
 				SkipTLSVerify: true,
 			}
-
-			client, err := NewMikrotikClient(config)
+			defaults := &MikrotikDefaults{}
+			client, err := NewMikrotikClient(config, defaults)
 			if err != nil {
 				t.Fatalf("Failed to create client: %v", err)
 			}
@@ -610,7 +619,8 @@ func TestDeleteDNSRecord(t *testing.T) {
 				Password:      mockPassword,
 				SkipTLSVerify: true,
 			}
-			client, err := NewMikrotikClient(config)
+			defaults := &MikrotikDefaults{}
+			client, err := NewMikrotikClient(config, defaults)
 			if err != nil {
 				t.Fatalf("Failed to create client: %v", err)
 			}
@@ -724,7 +734,8 @@ func TestGetAllDNSRecords(t *testing.T) {
 				Password:      mockPassword,
 				SkipTLSVerify: true,
 			}
-			client, err := NewMikrotikClient(config)
+			defaults := &MikrotikDefaults{}
+			client, err := NewMikrotikClient(config, defaults)
 			if err != nil {
 				t.Fatalf("Failed to create client: %v", err)
 			}

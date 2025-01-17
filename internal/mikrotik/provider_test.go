@@ -324,14 +324,24 @@ func TestContains(t *testing.T) {
 	}
 }
 
-func TestCleanupChanges(t *testing.T) {
+func TestChanges(t *testing.T) {
+	mikrotikProvider := &MikrotikProvider{
+		client: &MikrotikApiClient{
+			&MikrotikDefaults{},
+			nil,
+			nil,
+		},
+	}
+
 	tests := []struct {
 		name            string
+		provider        *MikrotikProvider
 		inputChanges    *plan.Changes
 		expectedChanges *plan.Changes
 	}{
 		{
-			name: "Multiple matching records - all should be cleaned up",
+			name:     "Multiple matching records - all should be cleaned up",
+			provider: mikrotikProvider,
 			inputChanges: &plan.Changes{
 				UpdateOld: []*endpoint.Endpoint{
 					{
@@ -381,7 +391,8 @@ func TestCleanupChanges(t *testing.T) {
 			expectedChanges: &plan.Changes{},
 		},
 		{
-			name: "Some matching, some different - only partial cleanup",
+			name:     "Some matching, some different - only partial cleanup",
+			provider: mikrotikProvider,
 			inputChanges: &plan.Changes{
 				UpdateOld: []*endpoint.Endpoint{
 					{
@@ -444,7 +455,8 @@ func TestCleanupChanges(t *testing.T) {
 			},
 		},
 		{
-			name: "Different comments across multiple records - no cleanup",
+			name:     "Different comments across multiple records - no cleanup",
+			provider: mikrotikProvider,
 			inputChanges: &plan.Changes{
 				UpdateOld: []*endpoint.Endpoint{
 					{
@@ -520,7 +532,7 @@ func TestCleanupChanges(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			outputChanges := cleanupChanges(tt.inputChanges)
+			outputChanges := tt.provider.changes(tt.inputChanges)
 
 			if len(outputChanges.UpdateOld) != len(tt.expectedChanges.UpdateOld) {
 				t.Errorf("Expected UpdateOld length %d, got %d", len(tt.expectedChanges.UpdateOld), len(outputChanges.UpdateOld))
