@@ -98,7 +98,7 @@ func (p *MikrotikProvider) GetDomainFilter() endpoint.DomainFilterInterface {
 // getProviderSpecific retrieves a provider-specific property from the endpoint, looking both values
 // that could come from annotations (i.e. webhook/%s) as well as values from CRD (i.e. %s).
 // If the property is not found, it returns the specified default value.
-func getProviderSpecific(ep *endpoint.Endpoint, ps string, defaultValue string) string {
+func (p *MikrotikProvider) getProviderSpecificOrDefault(ep *endpoint.Endpoint, ps string, defaultValue string) string {
 	value, valueExists := ep.GetProviderSpecificProperty(ps)
 	if valueExists {
 		log.Debugf("Found provider-specific property '%s' with value: %s", ps, value)
@@ -117,7 +117,7 @@ func getProviderSpecific(ep *endpoint.Endpoint, ps string, defaultValue string) 
 }
 
 // compareEndpoints compares two endpoints to determine if they are identical, keeping in mind empty/default states.
-func isEndpointMatching(a *endpoint.Endpoint, b *endpoint.Endpoint) bool {
+func (p *MikrotikProvider) compareEndpoints(a *endpoint.Endpoint, b *endpoint.Endpoint) bool {
 	log.Debugf("Comparing endpoint a: %v", a)
 	log.Debugf("Against endpoint b: %v", b)
 
@@ -125,46 +125,49 @@ func isEndpointMatching(a *endpoint.Endpoint, b *endpoint.Endpoint) bool {
 		log.Debugf("DNSName mismatch: %v != %v", a.DNSName, b.DNSName)
 		return false
 	}
+
 	if a.Targets[0] != b.Targets[0] {
 		log.Debugf("Targets[0] mismatch: %v != %v", a.Targets[0], b.Targets[0])
 		return false
 	}
 
-	if a.RecordTTL != b.RecordTTL {
+	aRelevantTTL := a.RecordTTL != 0 && a.RecordTTL != endpoint.TTL(p.client.TTL)
+	bRelevantTTL := b.RecordTTL != 0 && b.RecordTTL != endpoint.TTL(p.client.TTL)
+	if a.RecordTTL != b.RecordTTL && (aRelevantTTL || bRelevantTTL) {
 		log.Debugf("RecordTTL mismatch: %v != %v", a.RecordTTL, b.RecordTTL)
 		return false
 	}
 
-	aComment := getProviderSpecific(a, "comment", "")
-	bComment := getProviderSpecific(b, "comment", "")
+	aComment := p.getProviderSpecificOrDefault(a, "comment", "")
+	bComment := p.getProviderSpecificOrDefault(b, "comment", "")
 	if aComment != bComment {
 		log.Debugf("Comment mismatch: %v != %v", aComment, bComment)
 		return false
 	}
 
-	aMatchSubdomain := getProviderSpecific(a, "match-subdomain", "false")
-	bMatchSubdomain := getProviderSpecific(b, "match-subdomain", "false")
+	aMatchSubdomain := p.getProviderSpecificOrDefault(a, "match-subdomain", "false")
+	bMatchSubdomain := p.getProviderSpecificOrDefault(b, "match-subdomain", "false")
 	if aMatchSubdomain != bMatchSubdomain {
 		log.Debugf("MatchSubdomain mismatch: %v != %v", aMatchSubdomain, bMatchSubdomain)
 		return false
 	}
 
-	aDisabled := getProviderSpecific(a, "disabled", "false")
-	bDisabled := getProviderSpecific(b, "disabled", "false")
+	aDisabled := p.getProviderSpecificOrDefault(a, "disabled", "false")
+	bDisabled := p.getProviderSpecificOrDefault(b, "disabled", "false")
 	if aDisabled != bDisabled {
 		log.Debugf("Disabled mismatch: %v != %v", aDisabled, bDisabled)
 		return false
 	}
 
-	aAddressList := getProviderSpecific(a, "address-list", "")
-	bAddressList := getProviderSpecific(b, "address-list", "")
+	aAddressList := p.getProviderSpecificOrDefault(a, "address-list", "")
+	bAddressList := p.getProviderSpecificOrDefault(b, "address-list", "")
 	if aAddressList != bAddressList {
 		log.Debugf("AddressList mismatch: %v != %v", aAddressList, bAddressList)
 		return false
 	}
 
-	aRegexp := getProviderSpecific(a, "regexp", "")
-	bRegexp := getProviderSpecific(b, "regexp", "")
+	aRegexp := p.getProviderSpecificOrDefault(a, "regexp", "")
+	bRegexp := p.getProviderSpecificOrDefault(b, "regexp", "")
 	if aRegexp != bRegexp {
 		log.Debugf("Regexp mismatch: %v != %v", aRegexp, bRegexp)
 		return false
@@ -174,9 +177,9 @@ func isEndpointMatching(a *endpoint.Endpoint, b *endpoint.Endpoint) bool {
 	return true
 }
 
-func contains(haystack []*endpoint.Endpoint, needle *endpoint.Endpoint) bool {
+func (p *MikrotikProvider) listContains(haystack []*endpoint.Endpoint, needle *endpoint.Endpoint) bool {
 	for _, v := range haystack {
-		if isEndpointMatching(needle, v) {
+		if p.compareEndpoints(needle, v) {
 			return true
 		}
 	}
@@ -204,15 +207,15 @@ func (p *MikrotikProvider) changes(changes *plan.Changes) *plan.Changes {
 		if !create.RecordTTL.IsConfigured() {
 			log.Debugf("Setting default TTL for created endpoint: %v", create)
 			create.RecordTTL = endpoint.TTL(p.client.TTL)
-			newChanges.Create = append(newChanges.Create, create)
 		}
+		newChanges.Create = append(newChanges.Create, create)
 	}
 
 	// Identify duplicates in Update changes
 	duplicates := []*endpoint.Endpoint{}
 	for _, old := range changes.UpdateOld {
 		for _, new := range changes.UpdateNew {
-			if isEndpointMatching(old, new) {
+			if p.compareEndpoints(old, new) {
 				log.Debugf("Found duplicate update for endpoint: %v", old)
 				duplicates = append(duplicates, old)
 			}
@@ -221,7 +224,7 @@ func (p *MikrotikProvider) changes(changes *plan.Changes) *plan.Changes {
 
 	// Filter out duplicates from UpdateOld
 	for _, old := range changes.UpdateOld {
-		if !contains(duplicates, old) {
+		if !p.listContains(duplicates, old) {
 			log.Debugf("Adding non-duplicate UpdateOld endpoint: %v", old)
 			newChanges.UpdateOld = append(newChanges.UpdateOld, old)
 		}
@@ -229,8 +232,12 @@ func (p *MikrotikProvider) changes(changes *plan.Changes) *plan.Changes {
 
 	// Filter out duplicates from UpdateNew
 	for _, new := range changes.UpdateNew {
-		if !contains(duplicates, new) {
+		if !p.listContains(duplicates, new) {
 			log.Debugf("Adding non-duplicate UpdateNew endpoint: %v", new)
+			if !new.RecordTTL.IsConfigured() {
+				log.Debugf("Setting default TTL for UpdateNew endpoint: %v", new)
+				new.RecordTTL = endpoint.TTL(p.client.TTL)
+			}
 			newChanges.UpdateNew = append(newChanges.UpdateNew, new)
 		}
 	}
