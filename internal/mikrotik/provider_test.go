@@ -7,322 +7,350 @@ import (
 	"sigs.k8s.io/external-dns/plan"
 )
 
-// func TestGetProviderSpecific(t *testing.T) {
-// 	tests := []struct {
-// 		name          string
-// 		endpoint      *endpoint.Endpoint
-// 		property      string
-// 		expectedValue string
-// 	}{
-// 		{
-// 			name: "Direct property exists",
-// 			endpoint: &endpoint.Endpoint{
-// 				ProviderSpecific: endpoint.ProviderSpecific{
-// 					{Name: "comment", Value: "direct-comment"},
-// 				},
-// 			},
-// 			property:      "comment",
-// 			expectedValue: "direct-comment",
-// 		},
-// 		{
-// 			name: "Prefixed property exists",
-// 			endpoint: &endpoint.Endpoint{
-// 				ProviderSpecific: endpoint.ProviderSpecific{
-// 					{Name: "webhook/comment", Value: "prefixed-comment"},
-// 				},
-// 			},
-// 			property:      "comment",
-// 			expectedValue: "prefixed-comment",
-// 		},
-// 		{
-// 			name: "Both properties exist - direct takes precedence",
-// 			endpoint: &endpoint.Endpoint{
-// 				ProviderSpecific: endpoint.ProviderSpecific{
-// 					{Name: "comment", Value: "direct-comment"},
-// 					{Name: "webhook/comment", Value: "prefixed-comment"},
-// 				},
-// 			},
-// 			property:      "comment",
-// 			expectedValue: "direct-comment",
-// 		},
-// 		{
-// 			name: "Neither property exists",
-// 			endpoint: &endpoint.Endpoint{
-// 				ProviderSpecific: endpoint.ProviderSpecific{},
-// 			},
-// 			property:      "comment",
-// 			expectedValue: "",
-// 		},
-// 		{
-// 			name: "Weong key selected",
-// 			endpoint: &endpoint.Endpoint{
-// 				ProviderSpecific: endpoint.ProviderSpecific{
-// 					{Name: "comment", Value: "direct-comment"},
-// 				},
-// 			},
-// 			property:      "address-list",
-// 			expectedValue: "",
-// 		},
-// 	}
+func TestGetProviderSpecificOrDefault(t *testing.T) {
+	p := &MikrotikProvider{
+		client: &MikrotikApiClient{&MikrotikDefaults{TTL: int64(0)}, nil, nil},
+	}
 
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			value := getProviderSpecific(tt.endpoint, tt.property, "")
-// 			if value != tt.expectedValue {
-// 				t.Errorf("Expected %q, got %q", tt.expectedValue, value)
-// 			}
-// 		})
-// 	}
-// }
+	tests := []struct {
+		name          string
+		endpoint      *endpoint.Endpoint
+		property      string
+		expectedValue string
+	}{
+		{
+			name: "Direct property exists",
+			endpoint: &endpoint.Endpoint{
+				ProviderSpecific: endpoint.ProviderSpecific{
+					{Name: "comment", Value: "direct-comment"},
+				},
+			},
+			property:      "comment",
+			expectedValue: "direct-comment",
+		},
+		{
+			name: "Prefixed property exists",
+			endpoint: &endpoint.Endpoint{
+				ProviderSpecific: endpoint.ProviderSpecific{
+					{Name: "webhook/comment", Value: "prefixed-comment"},
+				},
+			},
+			property:      "comment",
+			expectedValue: "prefixed-comment",
+		},
+		{
+			name: "Both properties exist - direct takes precedence",
+			endpoint: &endpoint.Endpoint{
+				ProviderSpecific: endpoint.ProviderSpecific{
+					{Name: "comment", Value: "direct-comment"},
+					{Name: "webhook/comment", Value: "prefixed-comment"},
+				},
+			},
+			property:      "comment",
+			expectedValue: "direct-comment",
+		},
+		{
+			name: "Neither property exists",
+			endpoint: &endpoint.Endpoint{
+				ProviderSpecific: endpoint.ProviderSpecific{},
+			},
+			property:      "comment",
+			expectedValue: "",
+		},
+		{
+			name: "Weong key selected",
+			endpoint: &endpoint.Endpoint{
+				ProviderSpecific: endpoint.ProviderSpecific{
+					{Name: "comment", Value: "direct-comment"},
+				},
+			},
+			property:      "address-list",
+			expectedValue: "",
+		},
+	}
 
-// func TestIsEndpointMatching(t *testing.T) {
-// 	tests := []struct {
-// 		name          string
-// 		endpointA     *endpoint.Endpoint
-// 		endpointB     *endpoint.Endpoint
-// 		expectedMatch bool
-// 	}{
-// 		// MATCHING CASES
-// 		{
-// 			name: "Matching basic properties",
-// 			endpointA: &endpoint.Endpoint{
-// 				DNSName:   "example.com",
-// 				Targets:   endpoint.NewTargets("192.0.2.1"),
-// 				RecordTTL: endpoint.TTL(3600),
-// 			},
-// 			endpointB: &endpoint.Endpoint{
-// 				DNSName:   "example.com",
-// 				Targets:   endpoint.NewTargets("192.0.2.1"),
-// 				RecordTTL: endpoint.TTL(3600),
-// 			},
-// 			expectedMatch: true,
-// 		},
-// 		{
-// 			name: "Matching provider-specific",
-// 			endpointA: &endpoint.Endpoint{
-// 				DNSName:   "example.com",
-// 				Targets:   endpoint.NewTargets("192.0.2.1"),
-// 				RecordTTL: endpoint.TTL(3600),
-// 				ProviderSpecific: endpoint.ProviderSpecific{
-// 					{Name: "comment", Value: "match"},
-// 					{Name: "match-subdomain", Value: "true"},
-// 					{Name: "address-list", Value: "default"},
-// 					{Name: "regexp", Value: ".*"},
-// 				},
-// 			},
-// 			endpointB: &endpoint.Endpoint{
-// 				DNSName:   "example.com",
-// 				Targets:   endpoint.NewTargets("192.0.2.1"),
-// 				RecordTTL: endpoint.TTL(3600),
-// 				ProviderSpecific: endpoint.ProviderSpecific{
-// 					{Name: "webhook/comment", Value: "match"},
-// 					{Name: "webhook/match-subdomain", Value: "true"},
-// 					{Name: "webhook/address-list", Value: "default"},
-// 					{Name: "webhook/regexp", Value: ".*"},
-// 				},
-// 			},
-// 			expectedMatch: true,
-// 		},
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			value := p.getProviderSpecificOrDefault(tt.endpoint, tt.property, "")
+			if value != tt.expectedValue {
+				t.Errorf("Expected %q, got %q", tt.expectedValue, value)
+			}
+		})
+	}
+}
 
-// 		// EDGE CASES
-// 		{
-// 			name: "Match-Subdomain: 'false' and unspecified should match",
-// 			endpointA: &endpoint.Endpoint{
-// 				DNSName:   "example.com",
-// 				Targets:   endpoint.NewTargets("192.0.2.1"),
-// 				RecordTTL: endpoint.TTL(3600),
-// 				ProviderSpecific: endpoint.ProviderSpecific{
-// 					{Name: "match-subdomain", Value: "false"},
-// 				},
-// 			},
-// 			endpointB: &endpoint.Endpoint{
-// 				DNSName:          "example.com",
-// 				Targets:          endpoint.NewTargets("192.0.2.1"),
-// 				RecordTTL:        endpoint.TTL(3600),
-// 				ProviderSpecific: endpoint.ProviderSpecific{}, // unspecified match-subdomain
-// 			},
-// 			expectedMatch: true,
-// 		},
-// 		{
-// 			name: "Disabled: 'false' and unspecified should match",
-// 			endpointA: &endpoint.Endpoint{
-// 				DNSName:   "example.com",
-// 				Targets:   endpoint.NewTargets("192.0.2.1"),
-// 				RecordTTL: endpoint.TTL(3600),
-// 				ProviderSpecific: endpoint.ProviderSpecific{
-// 					{Name: "disabled", Value: "false"},
-// 				},
-// 			},
-// 			endpointB: &endpoint.Endpoint{
-// 				DNSName:          "example.com",
-// 				Targets:          endpoint.NewTargets("192.0.2.1"),
-// 				RecordTTL:        endpoint.TTL(3600),
-// 				ProviderSpecific: endpoint.ProviderSpecific{}, // unspecified disabled
-// 			},
-// 			expectedMatch: true,
-// 		},
+func TestCompareEndpoints(t *testing.T) {
+	defaultTTL := 94
+	p := &MikrotikProvider{
+		client: &MikrotikApiClient{&MikrotikDefaults{TTL: int64(defaultTTL)}, nil, nil},
+	}
 
-// 		// MISMATCH CASES
-// 		{
-// 			name: "Provider-specific properties do not match",
-// 			endpointA: &endpoint.Endpoint{
-// 				DNSName:   "example.com",
-// 				Targets:   endpoint.NewTargets("192.0.2.1"),
-// 				RecordTTL: endpoint.TTL(3600),
-// 				ProviderSpecific: endpoint.ProviderSpecific{
-// 					{Name: "comment", Value: "mismatch"},
-// 				},
-// 			},
-// 			endpointB: &endpoint.Endpoint{
-// 				DNSName:   "example.com",
-// 				Targets:   endpoint.NewTargets("192.0.2.1"),
-// 				RecordTTL: endpoint.TTL(3600),
-// 				ProviderSpecific: endpoint.ProviderSpecific{
-// 					{Name: "webhook/comment", Value: "different"},
-// 				},
-// 			},
-// 			expectedMatch: false,
-// 		},
-// 		{
-// 			name: "Mismatch in DNSName",
-// 			endpointA: &endpoint.Endpoint{
-// 				DNSName:   "example1.com",
-// 				Targets:   endpoint.NewTargets("192.0.2.1"),
-// 				RecordTTL: endpoint.TTL(3600),
-// 			},
-// 			endpointB: &endpoint.Endpoint{
-// 				DNSName:   "example2.com",
-// 				Targets:   endpoint.NewTargets("192.0.2.1"),
-// 				RecordTTL: endpoint.TTL(3600),
-// 			},
-// 			expectedMatch: false,
-// 		},
-// 		{
-// 			name: "Mismatch in Target",
-// 			endpointA: &endpoint.Endpoint{
-// 				DNSName:   "example.com",
-// 				Targets:   endpoint.NewTargets("192.0.2.1"),
-// 				RecordTTL: endpoint.TTL(3600),
-// 			},
-// 			endpointB: &endpoint.Endpoint{
-// 				DNSName:   "example.com",
-// 				Targets:   endpoint.NewTargets("192.0.2.2"),
-// 				RecordTTL: endpoint.TTL(3600),
-// 			},
-// 			expectedMatch: false,
-// 		},
-// 		{
-// 			name: "Mismatch in TTL",
-// 			endpointA: &endpoint.Endpoint{
-// 				DNSName:   "example.com",
-// 				Targets:   endpoint.NewTargets("192.0.2.1"),
-// 				RecordTTL: endpoint.TTL(3600),
-// 			},
-// 			endpointB: &endpoint.Endpoint{
-// 				DNSName:   "example.com",
-// 				Targets:   endpoint.NewTargets("192.0.2.1"),
-// 				RecordTTL: endpoint.TTL(3601),
-// 			},
-// 			expectedMatch: false,
-// 		},
-// 	}
+	tests := []struct {
+		name          string
+		endpointA     *endpoint.Endpoint
+		endpointB     *endpoint.Endpoint
+		expectedMatch bool
+	}{
+		// MATCHING CASES
+		{
+			name: "Matching basic properties",
+			endpointA: &endpoint.Endpoint{
+				DNSName:   "example.com",
+				Targets:   endpoint.NewTargets("192.0.2.1"),
+				RecordTTL: endpoint.TTL(3600),
+			},
+			endpointB: &endpoint.Endpoint{
+				DNSName:   "example.com",
+				Targets:   endpoint.NewTargets("192.0.2.1"),
+				RecordTTL: endpoint.TTL(3600),
+			},
+			expectedMatch: true,
+		},
+		{
+			name: "Matching provider-specific",
+			endpointA: &endpoint.Endpoint{
+				DNSName:   "example.com",
+				Targets:   endpoint.NewTargets("192.0.2.1"),
+				RecordTTL: endpoint.TTL(3600),
+				ProviderSpecific: endpoint.ProviderSpecific{
+					{Name: "comment", Value: "match"},
+					{Name: "match-subdomain", Value: "true"},
+					{Name: "address-list", Value: "default"},
+					{Name: "regexp", Value: ".*"},
+				},
+			},
+			endpointB: &endpoint.Endpoint{
+				DNSName:   "example.com",
+				Targets:   endpoint.NewTargets("192.0.2.1"),
+				RecordTTL: endpoint.TTL(3600),
+				ProviderSpecific: endpoint.ProviderSpecific{
+					{Name: "webhook/comment", Value: "match"},
+					{Name: "webhook/match-subdomain", Value: "true"},
+					{Name: "webhook/address-list", Value: "default"},
+					{Name: "webhook/regexp", Value: ".*"},
+				},
+			},
+			expectedMatch: true,
+		},
 
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			match := isEndpointMatching(tt.endpointA, tt.endpointB)
-// 			if match != tt.expectedMatch {
-// 				t.Errorf("Expected %v, got %v", tt.expectedMatch, match)
-// 			}
-// 		})
-// 	}
-// }
+		// EDGE CASES
+		{
+			name: "Match-Subdomain: 'false' and unspecified should match",
+			endpointA: &endpoint.Endpoint{
+				DNSName:   "example.com",
+				Targets:   endpoint.NewTargets("192.0.2.1"),
+				RecordTTL: endpoint.TTL(3600),
+				ProviderSpecific: endpoint.ProviderSpecific{
+					{Name: "match-subdomain", Value: "false"},
+				},
+			},
+			endpointB: &endpoint.Endpoint{
+				DNSName:          "example.com",
+				Targets:          endpoint.NewTargets("192.0.2.1"),
+				RecordTTL:        endpoint.TTL(3600),
+				ProviderSpecific: endpoint.ProviderSpecific{}, // unspecified match-subdomain
+			},
+			expectedMatch: true,
+		},
+		{
+			name: "Disabled: 'false' and unspecified should match",
+			endpointA: &endpoint.Endpoint{
+				DNSName:   "example.com",
+				Targets:   endpoint.NewTargets("192.0.2.1"),
+				RecordTTL: endpoint.TTL(3600),
+				ProviderSpecific: endpoint.ProviderSpecific{
+					{Name: "disabled", Value: "false"},
+				},
+			},
+			endpointB: &endpoint.Endpoint{
+				DNSName:          "example.com",
+				Targets:          endpoint.NewTargets("192.0.2.1"),
+				RecordTTL:        endpoint.TTL(3600),
+				ProviderSpecific: endpoint.ProviderSpecific{}, // unspecified disabled
+			},
+			expectedMatch: true,
+		},
+		{
+			name: "TTL: 0 and default TTL should match",
+			endpointA: &endpoint.Endpoint{
+				DNSName:   "example.com",
+				Targets:   endpoint.NewTargets("192.0.2.1"),
+				RecordTTL: endpoint.TTL(0),
+			},
+			endpointB: &endpoint.Endpoint{
+				DNSName:          "example.com",
+				Targets:          endpoint.NewTargets("192.0.2.1"),
+				RecordTTL:        endpoint.TTL(defaultTTL),
+				ProviderSpecific: endpoint.ProviderSpecific{},
+			},
+			expectedMatch: true,
+		},
 
-// func TestContains(t *testing.T) {
-// 	tests := []struct {
-// 		name          string
-// 		haystack      []*endpoint.Endpoint
-// 		needle        *endpoint.Endpoint
-// 		expectContain bool
-// 	}{
-// 		{
-// 			name: "Needle exists in haystack",
-// 			haystack: []*endpoint.Endpoint{
-// 				{
-// 					DNSName:   "example1.com",
-// 					Targets:   endpoint.NewTargets("192.2.2.1"),
-// 					RecordTTL: endpoint.TTL(36),
-// 				},
-// 				{
-// 					DNSName:   "example.com",
-// 					Targets:   endpoint.NewTargets("192.0.2.1"),
-// 					RecordTTL: endpoint.TTL(3600),
-// 					ProviderSpecific: endpoint.ProviderSpecific{
-// 						{Name: "comment", Value: "test"},
-// 					},
-// 				},
-// 				{
-// 					DNSName:   "example2.com",
-// 					Targets:   endpoint.NewTargets("192.1.2.1"),
-// 					RecordTTL: endpoint.TTL(360),
-// 				},
-// 			},
-// 			needle: &endpoint.Endpoint{
-// 				DNSName:   "example.com",
-// 				Targets:   endpoint.NewTargets("192.0.2.1"),
-// 				RecordTTL: endpoint.TTL(3600),
-// 				ProviderSpecific: endpoint.ProviderSpecific{
-// 					{Name: "webhook/comment", Value: "test"},
-// 				},
-// 			},
-// 			expectContain: true,
-// 		},
-// 		{
-// 			name: "Needle does not exist in haystack",
-// 			haystack: []*endpoint.Endpoint{
-// 				{
-// 					DNSName:   "example1.com",
-// 					Targets:   endpoint.NewTargets("192.0.2.1"),
-// 					RecordTTL: endpoint.TTL(3600),
-// 				},
-// 				{
-// 					DNSName:   "example2.com",
-// 					Targets:   endpoint.NewTargets("192.0.2.1"),
-// 					RecordTTL: endpoint.TTL(3600),
-// 				},
-// 				{
-// 					DNSName:   "example3.com",
-// 					Targets:   endpoint.NewTargets("192.0.2.1"),
-// 					RecordTTL: endpoint.TTL(3600),
-// 				},
-// 			},
-// 			needle: &endpoint.Endpoint{
-// 				DNSName:   "example.org",
-// 				Targets:   endpoint.NewTargets("192.0.2.1"),
-// 				RecordTTL: endpoint.TTL(3600),
-// 			},
-// 			expectContain: false,
-// 		},
-// 		{
-// 			name:     "Haystack is empty",
-// 			haystack: []*endpoint.Endpoint{},
-// 			needle: &endpoint.Endpoint{
-// 				DNSName:   "example.com",
-// 				Targets:   endpoint.NewTargets("192.0.2.1"),
-// 				RecordTTL: endpoint.TTL(3600),
-// 			},
-// 			expectContain: false,
-// 		},
-// 	}
+		// MISMATCH CASES
+		{
+			name: "Provider-specific properties do not match",
+			endpointA: &endpoint.Endpoint{
+				DNSName:   "example.com",
+				Targets:   endpoint.NewTargets("192.0.2.1"),
+				RecordTTL: endpoint.TTL(3600),
+				ProviderSpecific: endpoint.ProviderSpecific{
+					{Name: "comment", Value: "mismatch"},
+				},
+			},
+			endpointB: &endpoint.Endpoint{
+				DNSName:   "example.com",
+				Targets:   endpoint.NewTargets("192.0.2.1"),
+				RecordTTL: endpoint.TTL(3600),
+				ProviderSpecific: endpoint.ProviderSpecific{
+					{Name: "webhook/comment", Value: "different"},
+				},
+			},
+			expectedMatch: false,
+		},
+		{
+			name: "Mismatch in DNSName",
+			endpointA: &endpoint.Endpoint{
+				DNSName:   "example1.com",
+				Targets:   endpoint.NewTargets("192.0.2.1"),
+				RecordTTL: endpoint.TTL(3600),
+			},
+			endpointB: &endpoint.Endpoint{
+				DNSName:   "example2.com",
+				Targets:   endpoint.NewTargets("192.0.2.1"),
+				RecordTTL: endpoint.TTL(3600),
+			},
+			expectedMatch: false,
+		},
+		{
+			name: "Mismatch in Target",
+			endpointA: &endpoint.Endpoint{
+				DNSName:   "example.com",
+				Targets:   endpoint.NewTargets("192.0.2.1"),
+				RecordTTL: endpoint.TTL(3600),
+			},
+			endpointB: &endpoint.Endpoint{
+				DNSName:   "example.com",
+				Targets:   endpoint.NewTargets("192.0.2.2"),
+				RecordTTL: endpoint.TTL(3600),
+			},
+			expectedMatch: false,
+		},
+		{
+			name: "Mismatch in TTL",
+			endpointA: &endpoint.Endpoint{
+				DNSName:   "example.com",
+				Targets:   endpoint.NewTargets("192.0.2.1"),
+				RecordTTL: endpoint.TTL(3600),
+			},
+			endpointB: &endpoint.Endpoint{
+				DNSName:   "example.com",
+				Targets:   endpoint.NewTargets("192.0.2.1"),
+				RecordTTL: endpoint.TTL(3601),
+			},
+			expectedMatch: false,
+		},
+	}
 
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			contains := contains(tt.haystack, tt.needle)
-// 			if contains != tt.expectContain {
-// 				t.Errorf("Expected %v, got %v", tt.expectContain, contains)
-// 			}
-// 		})
-// 	}
-// }
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			match := p.compareEndpoints(tt.endpointA, tt.endpointB)
+			if match != tt.expectedMatch {
+				t.Errorf("Expected %v, got %v", tt.expectedMatch, match)
+			}
+		})
+	}
+}
+
+func TestListContains(t *testing.T) {
+	p := &MikrotikProvider{
+		client: &MikrotikApiClient{&MikrotikDefaults{TTL: int64(0)}, nil, nil},
+	}
+
+	tests := []struct {
+		name          string
+		haystack      []*endpoint.Endpoint
+		needle        *endpoint.Endpoint
+		expectContain bool
+	}{
+		{
+			name: "Needle exists in haystack",
+			haystack: []*endpoint.Endpoint{
+				{
+					DNSName:   "example1.com",
+					Targets:   endpoint.NewTargets("192.2.2.1"),
+					RecordTTL: endpoint.TTL(36),
+				},
+				{
+					DNSName:   "example.com",
+					Targets:   endpoint.NewTargets("192.0.2.1"),
+					RecordTTL: endpoint.TTL(3600),
+					ProviderSpecific: endpoint.ProviderSpecific{
+						{Name: "comment", Value: "test"},
+					},
+				},
+				{
+					DNSName:   "example2.com",
+					Targets:   endpoint.NewTargets("192.1.2.1"),
+					RecordTTL: endpoint.TTL(360),
+				},
+			},
+			needle: &endpoint.Endpoint{
+				DNSName:   "example.com",
+				Targets:   endpoint.NewTargets("192.0.2.1"),
+				RecordTTL: endpoint.TTL(3600),
+				ProviderSpecific: endpoint.ProviderSpecific{
+					{Name: "webhook/comment", Value: "test"},
+				},
+			},
+			expectContain: true,
+		},
+		{
+			name: "Needle does not exist in haystack",
+			haystack: []*endpoint.Endpoint{
+				{
+					DNSName:   "example1.com",
+					Targets:   endpoint.NewTargets("192.0.2.1"),
+					RecordTTL: endpoint.TTL(3600),
+				},
+				{
+					DNSName:   "example2.com",
+					Targets:   endpoint.NewTargets("192.0.2.1"),
+					RecordTTL: endpoint.TTL(3600),
+				},
+				{
+					DNSName:   "example3.com",
+					Targets:   endpoint.NewTargets("192.0.2.1"),
+					RecordTTL: endpoint.TTL(3600),
+				},
+			},
+			needle: &endpoint.Endpoint{
+				DNSName:   "example.org",
+				Targets:   endpoint.NewTargets("192.0.2.1"),
+				RecordTTL: endpoint.TTL(3600),
+			},
+			expectContain: false,
+		},
+		{
+			name:     "Haystack is empty",
+			haystack: []*endpoint.Endpoint{},
+			needle: &endpoint.Endpoint{
+				DNSName:   "example.com",
+				Targets:   endpoint.NewTargets("192.0.2.1"),
+				RecordTTL: endpoint.TTL(3600),
+			},
+			expectContain: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			contains := p.listContains(tt.haystack, tt.needle)
+			if contains != tt.expectContain {
+				t.Errorf("Expected %v, got %v", tt.expectContain, contains)
+			}
+		})
+	}
+}
 
 func TestChanges(t *testing.T) {
 	defaultTTL := 1800
