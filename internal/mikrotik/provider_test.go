@@ -370,6 +370,9 @@ func TestChanges(t *testing.T) {
 		inputChanges    *plan.Changes
 		expectedChanges *plan.Changes
 	}{
+		// ========================================================================================
+		// Matching Records lead to cleanup
+		// ========================================================================================
 		{
 			name:     "Multiple matching records - all should be cleaned up",
 			provider: mikrotikProvider,
@@ -485,6 +488,10 @@ func TestChanges(t *testing.T) {
 				},
 			},
 		},
+
+		// ========================================================================================
+		// No cleanup edge cases
+		// ========================================================================================
 		{
 			name:     "Different comments across multiple records - no cleanup",
 			provider: mikrotikProvider,
@@ -559,6 +566,10 @@ func TestChanges(t *testing.T) {
 				},
 			},
 		},
+
+		// ========================================================================================
+		// Default TTL Test Cases
+		// ========================================================================================
 		{
 			name:     "Create record with zero value in TTL",
 			provider: mikrotikProvider,
@@ -592,7 +603,7 @@ func TestChanges(t *testing.T) {
 			},
 		},
 		{
-			name:     "Update record with zero value in TTL",
+			name:     "Update 0 -> default TTL => no changes",
 			provider: mikrotikProvider,
 			inputChanges: &plan.Changes{
 				UpdateOld: []*endpoint.Endpoint{
@@ -613,7 +624,7 @@ func TestChanges(t *testing.T) {
 			expectedChanges: &plan.Changes{},
 		},
 		{
-			name:     "Update record with zero value in TTL",
+			name:     "Update X -> default TTL => changes",
 			provider: mikrotikProvider,
 			inputChanges: &plan.Changes{
 				UpdateOld: []*endpoint.Endpoint{
@@ -644,6 +655,42 @@ func TestChanges(t *testing.T) {
 						DNSName:   "example.org",
 						Targets:   endpoint.NewTargets("2.2.2.2"),
 						RecordTTL: endpoint.TTL(defaultTTL),
+					},
+				},
+			},
+		},
+		{
+			name:     "Update default TTL -> X => changes",
+			provider: mikrotikProvider,
+			inputChanges: &plan.Changes{
+				UpdateOld: []*endpoint.Endpoint{
+					{
+						DNSName:   "example.org",
+						Targets:   endpoint.NewTargets("2.2.2.2"),
+						RecordTTL: endpoint.TTL(defaultTTL),
+					},
+				},
+				UpdateNew: []*endpoint.Endpoint{
+					{
+						DNSName:   "example.org",
+						Targets:   endpoint.NewTargets("2.2.2.2"),
+						RecordTTL: endpoint.TTL(5),
+					},
+				},
+			},
+			expectedChanges: &plan.Changes{
+				UpdateOld: []*endpoint.Endpoint{
+					{
+						DNSName:   "example.org",
+						Targets:   endpoint.NewTargets("2.2.2.2"),
+						RecordTTL: endpoint.TTL(defaultTTL),
+					},
+				},
+				UpdateNew: []*endpoint.Endpoint{
+					{
+						DNSName:   "example.org",
+						Targets:   endpoint.NewTargets("2.2.2.2"),
+						RecordTTL: endpoint.TTL(5),
 					},
 				},
 			},
