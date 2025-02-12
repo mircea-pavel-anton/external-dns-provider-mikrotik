@@ -23,7 +23,7 @@ on:
 jobs:
   git:
     if: github.repository_owner == 'mirceanton' #?don't run on forks
-    uses: mirceanton/reusable-workflows/.github/workflows/reusable-release-semver.yaml@9ce913356128f964413b5fe99efe4858e18d7831 # v3.4.51
+    uses: mirceanton/reusable-workflows/.github/workflows/reusable-release-semver.yaml@c60bb9813e634b15663d4ff01027e3b32102aef4 # v3.7.2
     secrets: inherit
     with:
       dry-run: ${{ inputs.dry-run || github.event_name == 'pull_request' }}
