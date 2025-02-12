@@ -8,17 +8,17 @@ on:
 
 jobs:
   golangci-lint:
-    uses: mirceanton/reusable-workflows/.github/workflows/reusable-go-lint.yaml@9ce913356128f964413b5fe99efe4858e18d7831 # v3.4.51
+    uses: mirceanton/reusable-workflows/.github/workflows/reusable-go-lint.yaml@c60bb9813e634b15663d4ff01027e3b32102aef4 # v3.7.2
     with:
       golangci-version: v1.64.3
 
   yamllint:
-    uses: mirceanton/reusable-workflows/.github/workflows/reusable-yamllint.yaml@9ce913356128f964413b5fe99efe4858e18d7831 # v3.4.51
+    uses: mirceanton/reusable-workflows/.github/workflows/reusable-yamllint.yaml@c60bb9813e634b15663d4ff01027e3b32102aef4 # v3.7.2
   actionlint:
-    uses: mirceanton/reusable-workflows/.github/workflows/reusable-actionlint.yaml@9ce913356128f964413b5fe99efe4858e18d7831 # v3.4.51
+    uses: mirceanton/reusable-workflows/.github/workflows/reusable-actionlint.yaml@c60bb9813e634b15663d4ff01027e3b32102aef4 # v3.7.2
   shellcheck:
-    uses: mirceanton/reusable-workflows/.github/workflows/reusable-shellcheck.yaml@9ce913356128f964413b5fe99efe4858e18d7831 # v3.4.51
+    uses: mirceanton/reusable-workflows/.github/workflows/reusable-shellcheck.yaml@c60bb9813e634b15663d4ff01027e3b32102aef4 # v3.7.2
   markdownlint:
-    uses: mirceanton/reusable-workflows/.github/workflows/reusable-markdownlint.yaml@9ce913356128f964413b5fe99efe4858e18d7831 # v3.4.51
+    uses: mirceanton/reusable-workflows/.github/workflows/reusable-markdownlint.yaml@c60bb9813e634b15663d4ff01027e3b32102aef4 # v3.7.2
   commitlint:
-    uses: mirceanton/reusable-workflows/.github/workflows/reusable-commitlint.yaml@9ce913356128f964413b5fe99efe4858e18d7831 # v3.4.51
+    uses: mirceanton/reusable-workflows/.github/workflows/reusable-commitlint.yaml@c60bb9813e634b15663d4ff01027e3b32102aef4 # v3.7.2
